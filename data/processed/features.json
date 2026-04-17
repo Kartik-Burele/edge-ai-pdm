@@ -1,0 +1,9 @@
+{
+  "motor_id": "MOTOR_DE_001",
+  "features": {
+    "rms_vibration": 0.1377588534705579,
+    "kurtosis": 2.9336261986764174,
+    "spectral_entropy": 4.213983559284744,
+    "peak_frequency_hz": 3375.0
+  }
+}
