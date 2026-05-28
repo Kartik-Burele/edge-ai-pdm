@@ -8,3 +8,15 @@ wheels/
 
 # Virtual environments
 .venv
+
+# macOS metadata & system files
+**/__MACOSX/
+**/.DS_Store
+
+# Large dataset files (CSVs) in DUDU-BLDC
+**/DUDU-BLDC/**/Data/InputData/
+**/DUDU-BLDC/**/Data/IntermediateData/
+
+# Office temporary lock files & system junk
+~$*
+*.tmp
