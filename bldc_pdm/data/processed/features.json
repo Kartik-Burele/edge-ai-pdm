@@ -1,0 +1,11 @@
+{
+  "motor_id": "MOTOR_BLDC_001",
+  "features": {
+    "rms_current": 0.07804800706576373,
+    "kurtosis_current": 5.864001283476924,
+    "mean_speed": -3.8072265625000004,
+    "std_speed": 1.09308235133243,
+    "spectral_entropy_current": 2.8744737304270638,
+    "peak_frequency_current": 0.0
+  }
+}
