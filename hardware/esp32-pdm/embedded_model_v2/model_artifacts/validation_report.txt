@@ -1,0 +1,16 @@
+Embedded Model V2: 25-tree Random Forest (max depth 5)
+Accuracy: 95.95%
+Balanced accuracy: 90.70%
+Macro F1: 0.910
+
+              precision    recall  f1-score   support
+
+          F1       0.97      0.90      0.93        67
+          F2       0.84      0.95      0.89        62
+          F3       0.82      0.80      0.81        61
+          F4       0.96      0.90      0.93        60
+     HEALTHY       0.98      0.98      0.98       713
+
+    accuracy                           0.96       963
+   macro avg       0.91      0.91      0.91       963
+weighted avg       0.96      0.96      0.96       963

@@ -1,0 +1,36 @@
+PREDICTIVE MAINTENANCE DATA ANALYSIS REPORT
+=======================================================
+Rows/windows: 963
+Files/experiments: 45
+Healthy windows: 713
+Fault windows: 250
+Missing cells: 1963
+Infinite numeric cells: 0
+
+CLASS COUNTS
+dataset_type fault_id  windows  files  iterations
+       fault       F1       67      3           3
+       fault       F2       62      3           3
+       fault       F3       61      3           3
+       fault       F4       60      3           3
+     healthy  HEALTHY      713     33           3
+
+RPM QUALITY
+fault_id  windows  mean_valid_fraction  min_valid_fraction  bad_windows_lt90  very_bad_windows_lt50  mean_invalid_samples  max_invalid_samples
+      F1       67             1.000000               1.000                 0                      0              0.000000                    0
+      F2       62             1.000000               1.000                 0                      0              0.000000                    0
+      F3       61             1.000000               1.000                 0                      0              0.000000                    0
+      F4       60             0.840750               0.285                29                      4             31.850000                  143
+ HEALTHY      713             0.997342               0.770                 6                      0              0.531557                   46
+
+RECOMMENDED NEXT ACTIONS
+1. Keep all raw CSV files unchanged.
+2. Treat RPM outliers as a sensor-quality issue; do not label them as motor faults.
+3. Do not randomly split one-second windows into train/test sets.
+4. Use FILE as the grouping variable for validation.
+5. Start with a 5-class model: HEALTHY, F1, F2, F3, F4.
+6. Compare vibration+current against vibration+current+RPM.
+7. Inspect F4 separately because its RPM validity is much lower than the other classes.
+8. Use load as an operating-condition variable for baseline analysis, but exclude it from the first sensor-only model.
+9. Add 1X/2X/3X running-speed features later using RPM.
+10. Evaluate with grouped validation, confusion matrix, precision, recall and F1-score.

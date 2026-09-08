@@ -1,0 +1,72 @@
+PS C:\Users\40036626\Documents\Kartik\Code_v1\PDM_V1> & "C:\Program Files\Python313\python.exe" C:\Users\40036626\Documents\Kartik\Code_v1\PDM_V1\log_file\scripts\train_model.py       
+
+Dataset loaded
+Rows: 963
+Features: 40
+Groups: 45
+
+Running grouped 5-fold cross validation...
+Fold 1: 99.48%
+Fold 2: 96.37%
+Fold 3: 96.35%
+Fold 4: 97.93%
+Fold 5: 93.75%
+
+========================================
+FINAL CROSS-VALIDATION RESULTS
+========================================
+Accuracy: 96.78%
+Balanced Accuracy: 92.16%
+
+Classification Report:
+              precision    recall  f1-score   support
+
+     HEALTHY       0.98      0.99      0.98       713
+          F1       0.98      0.88      0.93        67
+          F2       0.92      0.95      0.94        62
+          F3       0.90      0.87      0.88        61
+          F4       0.93      0.92      0.92        60
+
+    accuracy                           0.97       963
+   macro avg       0.94      0.92      0.93       963
+weighted avg       0.97      0.97      0.97       963
+
+
+Confusion Matrix
+         HEALTHY  F1  F2  F3  F4
+HEALTHY      706   0   0   6   1
+F1             5  59   3   0   0
+F2             2   0  59   0   1
+F3             4   0   2  53   2
+F4             4   1   0   0  55
+
+Training final model on complete dataset...
+
+Top 20 features:
+        feature  importance
+        az_mean    0.080731
+        rpm_min    0.076536
+         ay_std    0.059683
+         ay_rms    0.054040
+     rpm_median    0.053092
+       ax_crest    0.049054
+         ax_rms    0.047352
+         ay_p2p    0.047132
+         ax_std    0.044260
+        rpm_max    0.040419
+        acs_rms    0.027810
+       acs_mean    0.026460
+       rpm_mean    0.026094
+        acs_min    0.025691
+spectral_energy    0.024488
+        ax_peak    0.024007
+        ay_peak    0.021746
+         ax_p2p    0.020768
+    acc_mag_p2p    0.019763
+         az_std    0.019036
+
+========================================
+MODEL SAVED
+========================================
+C:\Users\40036626\Documents\Kartik\Code_v1\PDM_V1\log_file\output290826\motor_fault_model.pkl
+PS C:\Users\40036626\Documents\Kartik\Code_v1\PDM_V1>

@@ -1,0 +1,19 @@
+source_file,window_start,window_end,fault_id,fault_description,rationale
+F1_repeat_cc_0.4_0.8A_1.csv,5,6,F1,Repeated load-switch response,First 0.4A to 0.8A transition and immediate response
+F1_repeat_cc_0.4_0.8A_1.csv,10,11,F1,Repeated load-switch response,Return transition and immediate response
+F1_repeat_cc_0.4_0.8A_1.csv,15,16,F1,Repeated load-switch response,Second 0.4A to 0.8A transition and immediate response
+F1_repeat_cc_0.4_0.8A_2.csv,5,6,F1,Repeated load-switch response,First 0.4A to 0.8A transition and immediate response
+F1_repeat_cc_0.4_0.8A_2.csv,10,11,F1,Repeated load-switch response,Return transition and immediate response
+F1_repeat_cc_0.4_0.8A_2.csv,15,16,F1,Repeated load-switch response,Second 0.4A to 0.8A transition and immediate response
+F1_repeat_cc_0.4_0.8A_3.csv,5,6,F1,Repeated load-switch response,First 0.4A to 0.8A transition and immediate response
+F1_repeat_cc_0.4_0.8A_3.csv,10,11,F1,Repeated load-switch response,Return transition and immediate response
+F1_repeat_cc_0.4_0.8A_3.csv,15,16,F1,Repeated load-switch response,Second 0.4A to 0.8A transition and immediate response
+F2_stepup_cc_0.3_1A_1.csv,5,6,F2,Abrupt load step response,Step from 0.3A to 1.0A and immediate response
+F2_stepup_cc_0.3_1A_2.csv,5,6,F2,Abrupt load step response,Step from 0.3A to 1.0A and immediate response
+F2_stepup_cc_0.3_1A_3.csv,5,6,F2,Abrupt load step response,Step from 0.3A to 1.0A and immediate response
+F3_spike_cc_0.2_1A_1.csv,7,9,F3,Short load spike response,Spike and recovery inferred from RPM/current transition
+F3_spike_cc_0.2_1A_2.csv,3,6,F3,Short load spike response,Spike and recovery inferred after timestamp-gap segment
+F3_spike_cc_0.2_1A_3.csv,10,11,F3,Short load spike response,Spike and recovery inferred from RPM/current transition
+F4_UV_cc_1A_9V_12V_1.csv,5,11,F4,Undervoltage response,Reduced-speed interval during 9V supply
+F4_UV_cc_1A_9V_12V_2.csv,2,6,F4,Undervoltage response,Reduced-speed interval during 9V supply
+F4_UV_cc_1A_9V_12V_3.csv,5,10,F4,Undervoltage response,Reduced-speed and recovery interval during 9V supply

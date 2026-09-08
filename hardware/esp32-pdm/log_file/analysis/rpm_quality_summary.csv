@@ -1,0 +1,6 @@
+fault_id,windows,mean_valid_fraction,min_valid_fraction,bad_windows_lt90,very_bad_windows_lt50,mean_invalid_samples,max_invalid_samples
+F1,67,1.0,1.0,0,0,0.0,0
+F2,62,1.0,1.0,0,0,0.0,0
+F3,61,1.0,1.0,0,0,0.0,0
+F4,60,0.84075,0.285,29,4,31.85,143
+HEALTHY,713,0.9973422159887798,0.77,6,0,0.5315568022440392,46

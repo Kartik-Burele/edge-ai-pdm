@@ -1,0 +1,6 @@
+dataset_type,fault_id,windows,files,iterations
+fault,F1,67,3,3
+fault,F2,62,3,3
+fault,F3,61,3,3
+fault,F4,60,3,3
+healthy,HEALTHY,713,33,3

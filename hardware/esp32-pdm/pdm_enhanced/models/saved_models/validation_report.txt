@@ -1,0 +1,50 @@
+ENHANCED PREDICTIVE MAINTENANCE: VALIDATION REPORT
+===================================================
+Dataset: 1122 1-second windows from 45 independent recordings
+Validation: 5-Fold Stratified Group K-Fold (Zero-leakage split by recording group)
+
+1. FULL 53-FEATURE RANDOM FOREST (300 Trees)
+   - Accuracy:          91.18%
+   - Balanced Accuracy: 74.88%
+   - Macro F1:          0.767
+
+2. COMPACT 12-FEATURE PRODUCTION & EMBEDDED MODEL (35 Trees, max_depth=6)
+   - Accuracy:          90.91%
+   - Balanced Accuracy: 79.82%
+   - Macro F1:          0.770
+
+Classification Report (5-Fold CV Out-of-Fold Predictions):
+              precision    recall  f1-score   support
+
+     HEALTHY       0.96      0.94      0.95       910
+          F1       0.64      0.94      0.76        68
+          F2       0.61      0.52      0.56        21
+          F3       0.72      0.91      0.81        32
+          F4       0.89      0.68      0.77        91
+
+    accuracy                           0.91      1122
+   macro avg       0.76      0.80      0.77      1122
+weighted avg       0.92      0.91      0.91      1122
+
+
+Confusion Matrix:
+                Pred_HEALTHY  Pred_F1  Pred_F2  Pred_F3  Pred_F4
+Actual_HEALTHY           854       36        7        5        8
+Actual_F1                  4       64        0        0        0
+Actual_F2                  7        0       11        3        0
+Actual_F3                  3        0        0       29        0
+Actual_F4                 26        0        0        3       62
+
+Selected Compact Features:
+ - rpm_min
+ - rpm_median
+ - rpm_slope_rpm_per_s
+ - rpm_p2p
+ - acs_dI_dt_slope
+ - acs_p2p
+ - az_mean
+ - ay_rms
+ - ay_p2p
+ - ax_crest
+ - order_2x_energy
+ - az_std

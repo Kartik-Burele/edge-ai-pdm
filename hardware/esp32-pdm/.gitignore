@@ -1,0 +1,30 @@
+# PlatformIO
+.pio/
+**/.pio/
+
+# VS Code
+.vscode/
+**/.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Temporary files
+*.bak
+*.tmp
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated binaries
+*.bin
+*.elf
+*.map
+
+# Python cache
+.pytest_cache/

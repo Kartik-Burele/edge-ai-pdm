@@ -1,0 +1,15 @@
+V3 relabelled-dataset grouped validation (3 folds)
+Accuracy: 97.82%
+Balanced accuracy: 63.31%
+
+              precision    recall  f1-score   support
+
+          F1       0.89      0.44      0.59        18
+          F2       1.00      0.17      0.29         6
+          F3       0.86      0.67      0.75         9
+          F4       1.00      0.89      0.94        18
+     HEALTHY       0.98      1.00      0.99       912
+
+    accuracy                           0.98       963
+   macro avg       0.95      0.63      0.71       963
+weighted avg       0.98      0.98      0.97       963
