@@ -218,39 +218,31 @@ The following placeholders are provided for the project photographs. The actual 
 
 ### Complete Motor and Sensor Setup
 
-```text
-![Complete Motor Setup](images/apparatus_motor_setup.jpg)
-```
+![Complete Motor Setup](images/complete_motor_setup.jpg)
 
 ### ESP32-S3 Edge AI Controller
 
-```text
 ![ESP32-S3 Controller](images/esp32_s3_controller.jpg)
-```
 
 ### ACS712 Current Sensor
 
-```text
 ![ACS712 Current Sensor](images/acs712_current_sensor.jpg)
-```
 
 ### Mechanically Coupled Motors with MPU6050
 
-```text
 ![Coupled Motors and MPU6050](images/coupled_motors_mpu6050.jpg)
-```
 
 ### Programmable DC Electronic Load
 
-```text
 ![Programmable DC Electronic Load](images/electronic_load.jpg)
-```
 
 ### HEDS-5640 Optical Encoder
 
-```text
 ![HEDS-5640 Encoder](images/heds-5640_encoder.jpg)
-```
+
+### TDK Lambda PSU
+
+![TDK Lambda PSU](images/tdk_lambda_psu.jpg)
 
 > **Note:** The image paths above are placeholders. Add the corresponding photographs to the repository later using the suggested filenames.
 
