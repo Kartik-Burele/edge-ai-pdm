@@ -8,7 +8,7 @@
 
 A complete end-to-end **Edge AI Predictive Maintenance (PDM)** system for real-time motor condition monitoring, machine-learning-based fault classification, embedded inference, and wireless dashboard visualization.
 
-The project combines **sensor data acquisition, feature engineering, machine learning, embedded Edge AI inference, and Wi-Fi-based monitoring** into a single predictive-maintenance platform.
+The project combines **sensor data acquisition, signal processing, feature engineering, machine learning, embedded Edge AI inference, and Wi-Fi-based monitoring** into a single predictive-maintenance platform.
 
 Developed as part of the **M.Tech in Applied AI and Communications program at VNIT**.
 
@@ -23,8 +23,8 @@ This project implements a laboratory-scale predictive-maintenance system for a D
 The system continuously measures:
 
 - Motor vibration using an **MPU6050 accelerometer**
-- Motor current using an **ACS712 current sensor**
-- Motor speed using an **optical encoder**
+- Motor/load current using an **ACS712 current sensor**
+- Motor speed using an **HEDS-5640 optical encoder**
 
 The acquired sensor signals are processed locally on the ESP32-S3. Features are extracted from rolling data windows and supplied directly to an embedded **Random Forest classifier**.
 
@@ -36,7 +36,7 @@ The classifier identifies the motor operating condition as one of five classes:
 4. **F3 – Current-Spike Condition**
 5. **F4 – Undervoltage Condition**
 
-The prediction, confidence, motor speed, current-related information, and other telemetry are then made available through a **Wi-Fi HTTP server** hosted directly on the ESP32-S3.
+The prediction, confidence, motor speed, current-related information, and other telemetry are made available through a **Wi-Fi HTTP server** hosted directly on the ESP32-S3.
 
 A browser-based dashboard can connect to the ESP32 over the local network and display the motor condition in real time.
 
@@ -60,7 +60,7 @@ The physical implementation combines:
 
 - MPU6050 accelerometer
 - ACS712 current sensor
-- Optical encoder for RPM measurement
+- HEDS-5640 optical encoder for RPM measurement
 
 This allows the model to use vibration, electrical-current, and rotational-speed information simultaneously.
 
@@ -138,8 +138,8 @@ The ESP32 uses an RGB NeoPixel status LED to provide a local indication of the d
               ┌─────────────┼─────────────┐
               │             │             │
               ▼             ▼             ▼
-         MPU6050         ACS712       Encoder
-       Vibration         Current         RPM
+         MPU6050         ACS712       HEDS-5640
+       Vibration         Current       Encoder/RPM
               │             │             │
               └─────────────┼─────────────┘
                             │
@@ -167,7 +167,7 @@ The ESP32 uses an RGB NeoPixel status LED to provide a local indication of the d
                                   Browser Dashboard
 ```
 
-The complete Edge AI processing pipeline is therefore:
+The complete Edge AI processing pipeline is:
 
 ```text
 Sensors
@@ -191,26 +191,214 @@ Web Dashboard
 
 ---
 
-# ⚙️ Hardware Implementation
+# ⚙️ Hardware Apparatus
 
-The current physical implementation is based on an:
+The physical test apparatus consists of a DC motor test bench, sensing hardware, an embedded processing unit, a laboratory DC power supply, and a programmable electronic load.
 
-**ESP32-S3 DevKitC-1**
+## Complete Apparatus
 
-The ESP32-S3 performs both sensor processing and machine-learning inference locally.
+The main hardware arrangement includes:
 
-### Sensors
+1. **ESP32-S3 DevKitC-1** — edge processing and embedded ML inference
+2. **MPU6050** — vibration/acceleration sensing
+3. **ACS712** — current sensing
+4. **HEDS-5640** — optical encoder for motor speed/RPM measurement
+5. **DC motor pair** — mechanically coupled motor arrangement used for the experimental setup
+6. **TDK-Lambda 36-24 laboratory DC power supply** — motor power source
+7. **Scientific SME1701+ programmable DC electronic load** — controlled electrical loading
+8. Breadboard and jumper wiring for sensor/ESP32 connections
+9. Mechanical coupling between the two motors
+10. Tachometer used during experimentation to independently verify RPM measurements
 
-| Component | Purpose |
-|---|---|
-| MPU6050 | Motor vibration measurement |
-| ACS712 | Motor/load current measurement |
-| Optical Encoder | Motor RPM measurement |
-| NeoPixel | Local motor-status indication |
+---
 
-The experimental setup uses a motor powered from a **12 V DC supply**.
+## 📷 Apparatus Photographs
 
-A second mechanically coupled motor and programmable DC electronic load are used to create controlled operating conditions.
+The following placeholders are provided for the project photographs. The actual image files can be placed in an `images/` directory later.
+
+### Complete Motor and Sensor Setup
+
+```text
+![Complete Motor Setup](images/apparatus_motor_setup.jpg)
+```
+
+### ESP32-S3 Edge AI Controller
+
+```text
+![ESP32-S3 Controller](images/esp32_s3_controller.jpg)
+```
+
+### ACS712 Current Sensor
+
+```text
+![ACS712 Current Sensor](images/acs712_current_sensor.jpg)
+```
+
+### Mechanically Coupled Motors with MPU6050
+
+```text
+![Coupled Motors and MPU6050](images/coupled_motors_mpu6050.jpg)
+```
+
+### Programmable DC Electronic Load
+
+```text
+![Programmable DC Electronic Load](images/electronic_load.jpg)
+```
+
+### HEDS-5640 Optical Encoder
+
+```text
+![HEDS-5640 Encoder](images/heds-5640_encoder.jpg)
+```
+
+> **Note:** The image paths above are placeholders. Add the corresponding photographs to the repository later using the suggested filenames.
+
+---
+
+# 🔧 Hardware Components
+
+## 1. ESP32-S3 DevKitC-1
+
+The **ESP32-S3 DevKitC-1** is the primary edge-computing platform.
+
+It performs:
+
+- Sensor acquisition
+- Rolling-window management
+- Feature extraction
+- Random Forest inference
+- Prediction smoothing
+- Wi-Fi communication
+- HTTP server operation
+- Dashboard hosting
+- JSON telemetry generation
+
+The ML model therefore runs directly on the microcontroller rather than requiring a separate PC or cloud inference service.
+
+---
+
+## 2. MPU6050 Accelerometer
+
+The MPU6050 is mounted on the monitored motor and is used to acquire three-axis acceleration data:
+
+```text
+Ax
+Ay
+Az
+```
+
+The acceleration measurements are used for vibration analysis and feature extraction.
+
+The current firmware configures the accelerometer for:
+
+- Accelerometer range: **±4 g**
+- Filter bandwidth: **94 Hz**
+
+---
+
+## 3. ACS712 Current Sensor
+
+An **ACS712 current sensor** is used to monitor the electrical current associated with the experimental motor/load system.
+
+The ESP32 reads the sensor through its ADC input.
+
+Current-derived information is used by the predictive-maintenance model along with vibration and RPM features.
+
+The system extracts current-related characteristics such as:
+
+- Current variation
+- Peak-to-peak current
+- Current slope / rate of change
+- Other statistical current features during the training pipeline
+
+---
+
+## 4. HEDS-5640 Optical Encoder
+
+The motor speed is measured using an **HEDS-5640 optical encoder**.
+
+The encoder provides pulse information to the ESP32-S3, which is used to calculate motor rotational speed in **RPM**.
+
+The encoder signal is processed using an interrupt-based input.
+
+The firmware includes:
+
+- Encoder pulse measurement
+- Debouncing
+- Minimum valid pulse period
+- RPM calculation
+- RPM outlier protection
+- RPM jump limiting
+
+RPM was also independently checked using a tachometer during the data-collection process.
+
+The encoder is an important part of the current implementation because RPM features help distinguish operating conditions that affect motor speed.
+
+---
+
+## 5. Mechanically Coupled DC Motors
+
+The experimental apparatus uses **two DC motors mechanically coupled through a shaft coupling**.
+
+The arrangement allows the second motor to be used as the load/generator side of the test setup.
+
+The monitored motor is supplied from the laboratory DC power supply, while the mechanically coupled motor is associated with the programmable electronic load.
+
+The mechanical arrangement allows controlled electrical operating conditions to be introduced while monitoring the response of the motor system.
+
+---
+
+## 6. TDK-Lambda 36-24 DC Power Supply
+
+The motor system is powered using a **TDK-Lambda 36-24 laboratory DC power supply**.
+
+The front panel shown in the project photographs is marked:
+
+```text
+36-24
+0–36 V
+0–24 A
+```
+
+During the current experiments, the motor supply is operated around the **12 V DC** operating condition.
+
+The programmable voltage output also enables controlled undervoltage experiments.
+
+### Placeholder
+
+```text
+![TDK-Lambda 36-24 DC Power Supply](images/tdk-lambda-36-24-power-supply.jpg)
+```
+
+---
+
+## 7. Scientific SME1701+ Programmable DC Electronic Load
+
+A **Scientific SME1701+ Programmable DC Electronic Load** is used to provide controlled electrical loading.
+
+The instrument shown in the project photographs is marked:
+
+```text
+SME1701+
+150 V / 30 A / 175 W
+```
+
+The electronic load is used to create controlled operating conditions such as:
+
+- Constant-current loading
+- Load-step changes
+- Repeated load transitions
+- Current-spike scenarios
+- Other controlled electrical conditions used during data collection
+
+These controlled conditions form the basis of the F1–F4 experimental classes.
+
+### Placeholder
+
+```text
+![Scientific SME1701+ Electronic Load](images/scientific-sme1701-electronic-load.jpg)
+```
 
 ---
 
@@ -223,7 +411,7 @@ The current firmware uses the following pins:
 | MPU6050 SDA | GPIO 8 |
 | MPU6050 SCL | GPIO 9 |
 | ACS712 ADC | GPIO 4 |
-| Encoder Index | GPIO 6 |
+| HEDS-5640 Encoder Index | GPIO 6 |
 | RGB Status LED | GPIO 38 |
 
 ---
@@ -303,8 +491,6 @@ The training dataset contains:
 
 These features include statistical, vibration, electrical-current, spectral, and RPM characteristics.
 
-Examples include:
-
 ### Vibration Features
 
 - Mean
@@ -351,11 +537,11 @@ The current predictive-maintenance classifier is a:
 The training configuration uses:
 
 ```text
-Number of trees:       500
-max_features:          sqrt
-min_samples_leaf:      2
-class weighting:       balanced_subsample
-random_state:          42
+Number of trees:        500
+max_features:           sqrt
+min_samples_leaf:       2
+class weighting:        balanced_subsample
+random_state:            42
 ```
 
 The model is validated using:
@@ -589,25 +775,25 @@ For example, the undervoltage condition produces significant RPM variation compa
 The physical ESP32-S3 firmware follows this sequence:
 
 ```text
-MPU6050 + ACS712 + Encoder
-             ↓
-       200 Hz Sampling
-             ↓
-      Circular Buffer
-             ↓
-      200-Sample Window
-             ↓
-      Feature Extraction
-             ↓
-      12-Feature Vector
-             ↓
-    Embedded Random Forest
-             ↓
-       Class Prediction
-             ↓
-   Temporal Smoothing
-             ↓
-  Health + Confidence
+MPU6050 + ACS712 + HEDS-5640 Encoder
+                  ↓
+            200 Hz Sampling
+                  ↓
+             Circular Buffer
+                  ↓
+             200-Sample Window
+                  ↓
+             Feature Extraction
+                  ↓
+             12-Feature Vector
+                  ↓
+           Embedded Random Forest
+                  ↓
+              Class Prediction
+                  ↓
+             Temporal Smoothing
+                  ↓
+            Health + Confidence
 ```
 
 Inference is performed directly on the ESP32-S3.
@@ -736,15 +922,10 @@ edge-ai-pdm/
 │   └── DUDU-BLDC/
 │
 ├── Docs/
-│
 ├── bldc_pdm/
-│
 ├── data/
-│
 ├── models/
-│
 ├── src/
-│
 ├── tools/
 │
 ├── hardware/
@@ -758,23 +939,15 @@ edge-ai-pdm/
 │       │   └── ml_dataset_v3.csv
 │       │
 │       ├── embedded_model_v2/
-│       │
 │       ├── include/
 │       │   └── pdm_model.h
-│       │
 │       ├── lib/
-│       │
 │       ├── log_file/
-│       │
 │       ├── pdm_enhanced/
-│       │
 │       ├── src/
 │       │   └── main.cpp
-│       │
 │       ├── test/
-│       │
 │       ├── PDM_Project_Chat_Handoff.md
-│       │
 │       └── platformio.ini
 │
 ├── IMPLEMENTATION_LOGS.md
@@ -977,7 +1150,7 @@ The physical ESP32-S3 implementation is now the primary real-time Edge AI deploy
 
 - Integrated MPU6050.
 - Integrated ACS712.
-- Integrated optical encoder.
+- Integrated HEDS-5640 optical encoder.
 - Implemented 200 Hz acquisition.
 - Implemented circular buffering.
 - Implemented embedded feature extraction.
@@ -1018,7 +1191,7 @@ Streamlit Dashboard
 ```text
 Motor
   ↓
-MPU6050 + ACS712 + Encoder
+MPU6050 + ACS712 + HEDS-5640 Encoder
   ↓
 ESP32-S3
   ↓
@@ -1046,7 +1219,10 @@ The key difference is that the current system performs **machine-learning infere
 | Build System | PlatformIO |
 | Accelerometer | MPU6050 |
 | Current Sensor | ACS712 |
-| Speed Sensor | Optical Encoder |
+| Speed Sensor | HEDS-5640 Optical Encoder |
+| Motor Arrangement | Mechanically coupled DC motor pair |
+| Motor Supply | TDK-Lambda 36-24 DC supply |
+| Programmable Load | Scientific SME1701+ |
 | Sampling Rate | 200 Hz |
 | Window Size | 200 samples |
 | Window Duration | 1 second |
@@ -1162,6 +1338,7 @@ The project therefore combines concepts from:
 - Predictive Maintenance
 - Signal Processing
 - Industrial Condition Monitoring
+- Sensor Fusion
 
 ---
 
