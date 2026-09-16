@@ -214,7 +214,6 @@ The main hardware arrangement includes:
 
 ## 📷 Apparatus Photographs
 
-The following placeholders are provided for the project photographs. The actual image files can be placed in an `images/` directory later.
 
 ### Complete Motor and Sensor Setup
 
@@ -243,8 +242,6 @@ The following placeholders are provided for the project photographs. The actual 
 ### TDK Lambda PSU
 
 ![TDK Lambda PSU](images/tdk_lambda_psu.jpg)
-
-> **Note:** The image paths above are placeholders. Add the corresponding photographs to the repository later using the suggested filenames.
 
 ---
 
