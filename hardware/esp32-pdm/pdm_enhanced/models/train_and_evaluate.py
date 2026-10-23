@@ -151,17 +151,16 @@ def main() -> None:
         "ay_rms",
         "ay_p2p",
         "ax_crest",
-        "order_2x_energy",
         "az_std",
     ]
 
-    print(f"\nSelected 12 Compact Domain Features for Embedded & Production Deployment:")
+    print(f"\nSelected {len(compact_features)} Compact Domain Features for Embedded & Production Deployment:")
     for idx, f in enumerate(compact_features, 1):
         imp = importances.loc[importances['feature'] == f, 'importance'].values[0] if f in importances['feature'].values else 0.0
         print(f"  {idx:02d}. {f:<25} (Importance: {imp:.4f})")
 
     # 3. Evaluate Compact 12-Feature Model
-    print("\n--- 2. Evaluating Compact 12-Feature Model (35 trees, max_depth=6) ---")
+    print(f"\n--- 2. Evaluating Compact {len(compact_features)}-Feature Model (35 trees, max_depth=6) ---")
     X_compact = df[compact_features]
     metrics_compact, true_compact, pred_compact, fold_accs_compact = evaluate_grouped_cv(
         X_compact, y, groups, RF_COMPACT_PARAMS, n_splits=5
@@ -213,7 +212,7 @@ def main() -> None:
         f"   - Accuracy:          {metrics_full['accuracy'] * 100:.2f}%\n"
         f"   - Balanced Accuracy: {metrics_full['balanced_accuracy'] * 100:.2f}%\n"
         f"   - Macro F1:          {metrics_full['macro_f1']:.3f}\n\n"
-        "2. COMPACT 12-FEATURE PRODUCTION & EMBEDDED MODEL (35 Trees, max_depth=6)\n"
+        f"2. COMPACT {len(compact_features)}-FEATURE PRODUCTION & EMBEDDED MODEL (35 Trees, max_depth=6)\n"
         f"   - Accuracy:          {metrics_compact['accuracy'] * 100:.2f}%\n"
         f"   - Balanced Accuracy: {metrics_compact['balanced_accuracy'] * 100:.2f}%\n"
         f"   - Macro F1:          {metrics_compact['macro_f1']:.3f}\n\n"

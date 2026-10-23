@@ -279,28 +279,11 @@ void processRollingWindow() {
   const float rpm_p2p = rpm_max - rpm_min;
   const float rpm_median = valid_count % 2 ? s_valid_rpm_sorted[valid_count / 2] : (s_valid_rpm_sorted[valid_count / 2 - 1] + s_valid_rpm_sorted[valid_count / 2]) * 0.5f;
 
-  // Order 2X Energy on acceleration magnitude
-  const float f_2x = (rpm_median / 60.0f) * 2.0f;
-  float order_2x_energy = 0.0f;
-  if (f_2x > 0.0f && f_2x < 100.0f) {
-    float real_sum = 0.0f, imag_sum = 0.0f;
-    const float omega = 2.0f * (float)M_PI * f_2x / 200.0f;
-    for (int i = 0; i < BUFFER_SIZE; ++i) {
-      const float ax_d = s_ax[i] - ax_mean;
-      const float ay_d = s_ay[i] - ay_mean;
-      const float az_d = s_az[i] - az_mean;
-      const float mag_d = sqrtf(ax_d * ax_d + ay_d * ay_d + az_d * az_d);
-      const float hanning = 0.5f * (1.0f - cosf(2.0f * (float)M_PI * i / (BUFFER_SIZE - 1)));
-      real_sum += (mag_d * hanning) * cosf(omega * i);
-      imag_sum -= (mag_d * hanning) * sinf(omega * i);
-    }
-    order_2x_energy = (real_sum * real_sum + imag_sum * imag_sum);
-  }
-
-  // Populate 12-feature vector in exact header order matching pdm_model.h:
+  // Populate feature vector in exact header order matching pdm_model.h:
   // 0: rpm_min, 1: rpm_median, 2: rpm_slope_rpm_per_s, 3: rpm_p2p,
   // 4: acs_dI_dt_slope, 5: acs_p2p, 6: az_mean, 7: ay_rms,
-  // 8: ay_p2p, 9: ax_crest, 10: order_2x_energy, 11: az_std
+  // 8: ay_p2p, 9: ax_crest, 10: az_std
+  // (order_2x_energy was removed: it is zero above ~3000 RPM at 200 Hz sampling)
   const float features[PDM_FEATURE_COUNT] = {
       rpm_min,
       rpm_median,
@@ -312,7 +295,6 @@ void processRollingWindow() {
       ay_rms,
       ay_p2p,
       ax_crest,
-      order_2x_energy,
       az_std,
   };
 
