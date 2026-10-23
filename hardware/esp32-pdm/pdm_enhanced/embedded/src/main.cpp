@@ -18,6 +18,7 @@
 #include <Adafruit_NeoPixel.h>
 
 #include "pdm_model.h"
+#include "pdm_features.h"
 
 // Hardware Pin Definitions
 #define I2C_SDA_PIN 8
@@ -32,8 +33,6 @@ constexpr int BUFFER_SIZE = 200;                // 1.0 second history
 constexpr int INFERENCE_STRIDE = 50;            // Run inference every 50 samples (250 ms)
 constexpr uint32_t ENCODER_DEBOUNCE_US = 2000;
 constexpr uint32_t MIN_VALID_PERIOD_US = 8000;
-constexpr float RPM_HARD_MAX = 5000.0f;
-constexpr float RPM_JUMP_LIMIT = 1000.0f;
 
 // Global Objects & State
 Adafruit_MPU6050 mpu;
@@ -156,30 +155,13 @@ static float s_ay[BUFFER_SIZE];
 static float s_az[BUFFER_SIZE];
 static float s_acs[BUFFER_SIZE];
 static float s_rpm[BUFFER_SIZE];
-static float s_valid_rpm[BUFFER_SIZE];
-static float s_valid_t[BUFFER_SIZE];
-static float s_valid_rpm_sorted[BUFFER_SIZE];
-
-// Iterative in-place insertion sort (Zero stack usage, no recursion)
-void insertionSort(float arr[], int n) {
-  for (int i = 1; i < n; ++i) {
-    const float key = arr[i];
-    int j = i - 1;
-    while (j >= 0 && arr[j] > key) {
-      arr[j + 1] = arr[j];
-      --j;
-    }
-    arr[j + 1] = key;
-  }
-}
 
 // ----------------------------------------------------------------------------
 // Feature Extraction & Inference
+// Feature code lives in embedded/include/pdm_features.h (shared with the host parity test).
 // ----------------------------------------------------------------------------
 void processRollingWindow() {
-  float az_sum = 0.0f, ay_sum = 0.0f, ax_sum = 0.0f, acs_sum = 0.0f;
-  float acs_min = 1e6f, acs_max = -1e6f;
-
+  // Copy the ring buffer into chronological order (oldest sample first)
   for (int i = 0; i < BUFFER_SIZE; ++i) {
     const int idx = (write_index + i) % BUFFER_SIZE;
     s_ax[i] = ax_ring[idx];
@@ -187,116 +169,14 @@ void processRollingWindow() {
     s_az[i] = az_ring[idx];
     s_acs[i] = acs_ring[idx];
     s_rpm[i] = rpm_ring[idx];
-
-    ax_sum += s_ax[i];
-    ay_sum += s_ay[i];
-    az_sum += s_az[i];
-    acs_sum += s_acs[i];
-    acs_min = min(acs_min, s_acs[i]);
-    acs_max = max(acs_max, s_acs[i]);
   }
 
-  const float ax_mean = ax_sum / (float)BUFFER_SIZE;
-  const float ay_mean = ay_sum / (float)BUFFER_SIZE;
-  const float az_mean = az_sum / (float)BUFFER_SIZE;
-  const float acs_mean = acs_sum / (float)BUFFER_SIZE;
-  const float acs_p2p = acs_max - acs_min;
-
-  // ACS712 Current rate of change slope (dI/dt)
-  float num_acs = 0.0f;
-  for (int i = 0; i < BUFFER_SIZE; ++i) {
-    const float dt = ((float)i / 200.0f) - 0.4975f;
-    num_acs += dt * (s_acs[i] - acs_mean);
-  }
-  const float acs_dI_dt_slope = num_acs / 16.66625f;
-
-  // Dynamic signals, RMS, Peak, P2P, Crest
-  float ay_sq_sum = 0.0f, az_sq_sum = 0.0f, ax_sq_sum = 0.0f;
-  float ay_min = 1e6f, ay_max = -1e6f;
-  float az_min = 1e6f, az_max = -1e6f;
-  float ax_peak = 0.0f;
-
-  for (int i = 0; i < BUFFER_SIZE; ++i) {
-    const float ax_d = s_ax[i] - ax_mean;
-    const float ay_d = s_ay[i] - ay_mean;
-    const float az_d = s_az[i] - az_mean;
-
-    ax_sq_sum += ax_d * ax_d;
-    ax_peak = max(ax_peak, fabsf(ax_d));
-
-    ay_sq_sum += ay_d * ay_d;
-    ay_min = min(ay_min, ay_d);
-    ay_max = max(ay_max, ay_d);
-
-    az_sq_sum += az_d * az_d;
-    az_min = min(az_min, az_d);
-    az_max = max(az_max, az_d);
-  }
-
-  const float ax_rms = sqrtf(ax_sq_sum / (float)BUFFER_SIZE);
-  const float ax_crest = ax_rms > 1e-6f ? ax_peak / ax_rms : 0.0f;
-
-  const float ay_rms = sqrtf(ay_sq_sum / (float)BUFFER_SIZE);
-  const float ay_p2p = ay_max - ay_min;
-
-  const float az_std = sqrtf(az_sq_sum / (float)BUFFER_SIZE);
-
-  // RPM validation, statistics, and linear slope
-  int valid_count = 0;
-  float rpm_sum = 0.0f, t_sum = 0.0f;
-
-  for (int i = 0; i < BUFFER_SIZE; ++i) {
-    if (s_rpm[i] > 0.0f && s_rpm[i] <= RPM_HARD_MAX) {
-      const float t_sec = (float)i / 200.0f;
-      s_valid_rpm[valid_count] = s_rpm[i];
-      s_valid_t[valid_count] = t_sec;
-      s_valid_rpm_sorted[valid_count] = s_rpm[i];
-      rpm_sum += s_rpm[i];
-      t_sum += t_sec;
-      valid_count++;
-    }
-  }
-
-  if (valid_count < BUFFER_SIZE / 3) {
-    setStatusColor(0, 0, 255); // Blue: Insufficient valid RPM samples
+  // Feature order matches PDM_FEATURE_NAMES in pdm_model.h (see pdm::FeatureIndex)
+  float features[PDM_FEATURE_COUNT];
+  if (!pdm::extractFeatures(s_ax, s_ay, s_az, s_acs, s_rpm, features)) {
+    setStatusColor(0, 0, 255); // Blue: insufficient valid RPM samples in this window
     return;
   }
-
-  // Calculate RPM slope (acceleration/deceleration)
-  const float t_mean_rpm = t_sum / (float)valid_count;
-  const float rpm_mean_val = rpm_sum / (float)valid_count;
-  float num_rpm = 0.0f, den_rpm = 0.0f;
-  for (int i = 0; i < valid_count; ++i) {
-    const float dt = s_valid_t[i] - t_mean_rpm;
-    num_rpm += dt * (s_valid_rpm[i] - rpm_mean_val);
-    den_rpm += dt * dt;
-  }
-  const float rpm_slope_rpm_per_s = den_rpm > 1e-6f ? (num_rpm / den_rpm) : 0.0f;
-
-  insertionSort(s_valid_rpm_sorted, valid_count);
-  const float rpm_min = s_valid_rpm_sorted[0];
-  const float rpm_max = s_valid_rpm_sorted[valid_count - 1];
-  const float rpm_p2p = rpm_max - rpm_min;
-  const float rpm_median = valid_count % 2 ? s_valid_rpm_sorted[valid_count / 2] : (s_valid_rpm_sorted[valid_count / 2 - 1] + s_valid_rpm_sorted[valid_count / 2]) * 0.5f;
-
-  // Populate feature vector in exact header order matching pdm_model.h:
-  // 0: rpm_min, 1: rpm_median, 2: rpm_slope_rpm_per_s, 3: rpm_p2p,
-  // 4: acs_dI_dt_slope, 5: acs_p2p, 6: az_mean, 7: ay_rms,
-  // 8: ay_p2p, 9: ax_crest, 10: az_std
-  // (order_2x_energy was removed: it is zero above ~3000 RPM at 200 Hz sampling)
-  const float features[PDM_FEATURE_COUNT] = {
-      rpm_min,
-      rpm_median,
-      rpm_slope_rpm_per_s,
-      rpm_p2p,
-      acs_dI_dt_slope,
-      acs_p2p,
-      az_mean,
-      ay_rms,
-      ay_p2p,
-      ax_crest,
-      az_std,
-  };
 
   float confidence = 0.0f;
   float health_index = 100.0f;
@@ -311,9 +191,9 @@ void processRollingWindow() {
       PDM_LABELS[pred_class],
       health_index,
       confidence * 100.0f,
-      rpm_median,
-      rpm_slope_rpm_per_s,
-      acs_dI_dt_slope
+      features[pdm::F_RPM_MEDIAN],
+      features[pdm::F_RPM_SLOPE],
+      features[pdm::F_ACS_DIDT]
   );
 }
 
