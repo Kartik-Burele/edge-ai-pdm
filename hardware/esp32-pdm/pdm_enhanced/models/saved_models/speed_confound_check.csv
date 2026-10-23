@@ -1,0 +1,4 @@
+variant,balanced_accuracy,macro_f1,recall_HEALTHY,recall_F1,recall_F2,recall_F3,recall_F4
+deployed (11 features),0.809,0.774,0.938,0.936,0.571,0.906,0.692
+no RPM features (7),0.737,0.682,0.9,0.912,0.698,0.542,0.634
+RPM features only (4),0.639,0.593,0.893,0.603,0.508,0.625,0.568
