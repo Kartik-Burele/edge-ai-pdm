@@ -6,9 +6,9 @@
 ![Framework](https://img.shields.io/badge/Framework-Arduino%20%7C%20PlatformIO-blue)
 ![ML](https://img.shields.io/badge/ML-Random%20Forest-green)
 
-A complete end-to-end **Edge AI Predictive Maintenance (PDM)** system for real-time motor condition monitoring, machine-learning-based fault classification, embedded inference, and wireless dashboard visualization.
+A complete end-to-end **Edge AI Predictive Maintenance (PDM)** system for real-time motor condition monitoring, machine-learning-based fault classification, and embedded inference.
 
-The project combines **sensor data acquisition, signal processing, feature engineering, machine learning, embedded Edge AI inference, and Wi-Fi-based monitoring** into a single predictive-maintenance platform.
+The project combines **sensor data acquisition, signal processing, feature engineering, machine learning, and embedded Edge AI inference** into a single predictive-maintenance platform. The current stable build streams telemetry over serial; Wi-Fi dashboard integration is planned as the next stage (see the Wi-Fi Dashboard (Deferred) section below).
 
 Developed as part of the **M.Tech in Applied AI and Communications program at VNIT**.
 
@@ -36,9 +36,9 @@ The classifier identifies the motor operating condition as one of five classes:
 4. **F3 – Current-Spike Condition**
 5. **F4 – Undervoltage Condition**
 
-The prediction, confidence, motor speed, current-related information, and other telemetry are made available through a **Wi-Fi HTTP server** hosted directly on the ESP32-S3.
+The prediction, confidence, motor speed, and other telemetry are printed as **JSON lines over the serial port** (115200 baud) by the ESP32-S3 firmware in `hardware/esp32-pdm/pdm_enhanced/`.
 
-A browser-based dashboard can connect to the ESP32 over the local network and display the motor condition in real time.
+A Wi-Fi HTTP server and browser dashboard were built and tested earlier, but were removed from the stable build because of latency issues. They are planned for integration once the current issues are resolved.
 
 ---
 
@@ -77,48 +77,27 @@ The firmware calculates features from the acquired sensor data before passing th
 
 The deployed feature set includes vibration, current, and RPM-related characteristics.
 
-### Wi-Fi Connectivity
+### Serial Telemetry (Current Stable Build)
 
-The ESP32-S3 connects to the same local network as the monitoring laptop.
+The stable firmware prints one JSON object per inference window (every 250 ms) over the serial port:
 
-The ESP32 hosts an HTTP server that provides:
-
-```text
-ESP32-S3
-    ↓
-Wi-Fi
-    ↓
-Laptop / Browser
-    ↓
-Real-Time Dashboard
+```json
+{"ts":12345,"pred":"HEALTHY","health":93.4,"conf":88.0,"rpm":2898.0,"slope":1.2,"dI_dt":0.4}
 ```
 
-### Built-In Web Dashboard
+Fields: `ts` (ms since boot), `pred` (class label), `health` (P(HEALTHY) × 100), `conf` (top-class probability × 100), `rpm` (median RPM in the window), `slope` (RPM slope, RPM/s), `dI_dt` (current slope, ADC counts/s).
 
-The dashboard is served directly from the ESP32-S3 firmware.
+The on-device health index is `100 × P(HEALTHY)`. The Isolation Forest anomaly gate used in the Python pipeline is **not** part of the firmware yet.
 
-No separate Streamlit server is required for the physical deployment.
+### Wi-Fi Dashboard (Deferred)
 
-The dashboard displays information such as:
+A Wi-Fi build (HTTP dashboard and `/api/data` endpoint, source in `hardware/esp32-pdm/src/main.cpp`) was implemented and tested. It was dropped from the stable build because of observed latency issues. It is not part of the current stable build, and the features below are planned, not active:
 
-- Current prediction
-- Motor health status
-- Prediction confidence
-- RPM
-- RPM trend/slope
-- Current change rate
-- Temperature
-- Real-time telemetry
+- HTTP dashboard served from the ESP32-S3
+- `/api/data` JSON endpoint
+- Browser-side polling for prediction and telemetry
 
-### JSON API
-
-The ESP32 provides a machine-readable endpoint:
-
-```text
-/api/data
-```
-
-The endpoint returns the latest prediction and sensor-derived telemetry in JSON format.
+These will be integrated after the current feature-pipeline issues are resolved.
 
 ### Prediction Smoothing
 
@@ -161,10 +140,10 @@ The ESP32 uses an RGB NeoPixel status LED to provide a local indication of the d
               ┌─────────────┴─────────────┐
               │                           │
               ▼                           ▼
-        NeoPixel LED                 Wi-Fi Server
+        NeoPixel LED                Serial JSON (115200 baud)
                                           │
                                           ▼
-                                  Browser Dashboard
+                              (planned: Wi-Fi / Browser Dashboard)
 ```
 
 The complete Edge AI processing pipeline is:
@@ -184,9 +163,9 @@ Prediction Smoothing
    ↓
 Motor Health Classification
    ↓
-Wi-Fi
+Serial JSON Telemetry
    ↓
-Web Dashboard
+(planned) Wi-Fi Web Dashboard
 ```
 
 ---
@@ -258,10 +237,9 @@ It performs:
 - Feature extraction
 - Random Forest inference
 - Prediction smoothing
-- Wi-Fi communication
-- HTTP server operation
-- Dashboard hosting
-- JSON telemetry generation
+- JSON telemetry generation over serial
+
+Wi-Fi communication and dashboard hosting are planned for a later stage (see the Wi-Fi Dashboard (Deferred) section below).
 
 The ML model therefore runs directly on the microcontroller rather than requiring a separate PC or cloud inference service.
 
@@ -314,11 +292,12 @@ The encoder signal is processed using an interrupt-based input.
 The firmware includes:
 
 - Encoder pulse measurement
-- Debouncing
-- Minimum valid pulse period
+- Debouncing (2 ms)
+- Minimum valid pulse period (8 ms)
 - RPM calculation
-- RPM outlier protection
-- RPM jump limiting
+- RPM outlier protection (0 < RPM ≤ 5000)
+
+Note: the Python feature pipeline also applies a median filter and a jump limit (1000 RPM) to the RPM signal. The firmware does not yet implement the jump limit (see Known Issues in the Limitations section).
 
 RPM was also independently checked using a tachometer during the data-collection process.
 
@@ -393,7 +372,7 @@ These controlled conditions form the basis of the F1–F4 experimental classes.
 
 # 🔌 ESP32-S3 Pin Configuration
 
-The current firmware uses the following pins:
+The stable firmware (`hardware/esp32-pdm/pdm_enhanced/embedded/src/main.cpp`) uses the following pins:
 
 | Function | ESP32-S3 Pin |
 |---|---:|
@@ -472,13 +451,13 @@ RPM measurements were independently verified using a tachometer during the exper
 
 The machine-learning pipeline initially extracts a larger feature set from the raw sensor recordings.
 
-The training dataset contains:
+The training pipeline (`hardware/esp32-pdm/pdm_enhanced/data_processing/feature_extractor.py`) computes:
 
 ```text
-40 ML features
+53 candidate features per 1-second window
 ```
 
-These features include statistical, vibration, electrical-current, spectral, and RPM characteristics.
+These features include statistical, vibration, electrical-current, spectral/order-tracking, electromechanical, and RPM characteristics.
 
 ### Vibration Features
 
@@ -513,7 +492,7 @@ These features include statistical, vibration, electrical-current, spectral, and
 - Maximum RPM
 - RPM variation
 
-The final embedded model uses a compact **12-feature representation** suitable for microcontroller deployment.
+The final embedded model uses a compact **12-feature representation** selected by feature importance, suitable for microcontroller deployment.
 
 ---
 
@@ -523,15 +502,18 @@ The current predictive-maintenance classifier is a:
 
 **Random Forest Classifier**
 
-The training configuration uses:
+The deployed (embedded) model is trained with:
 
 ```text
-Number of trees:        500
+Number of trees:        35
+max_depth:              6
 max_features:           sqrt
 min_samples_leaf:       2
 class weighting:        balanced_subsample
-random_state:            42
+random_state:           42
 ```
+
+A 300-tree, 53-feature model is trained alongside it as a comparison baseline.
 
 The model is validated using:
 
@@ -583,10 +565,10 @@ The embedded feature vector contains:
 The generated embedded model is stored in:
 
 ```text
-hardware/esp32-pdm/include/pdm_model.h
+hardware/esp32-pdm/pdm_enhanced/embedded/include/pdm_model.h
 ```
 
-The generated model file should not be manually edited.
+It is generated by `pdm_enhanced/embedded/export_c_header.py` and should not be manually edited.
 
 ---
 
@@ -613,8 +595,8 @@ They should not be interpreted as universal physical motor-failure categories.
 The current experimental dataset contains:
 
 ```text
-963 one-second windows
-40 ML features
+1122 one-second windows
+53 candidate features
 45 independent recording groups
 ```
 
@@ -622,12 +604,12 @@ Class distribution:
 
 | Class | Windows |
 |---|---:|
-| HEALTHY | 713 |
-| F1 | 67 |
-| F2 | 62 |
-| F3 | 61 |
-| F4 | 60 |
-| **Total** | **963** |
+| HEALTHY | 910 |
+| F1 | 68 |
+| F2 | 21 |
+| F3 | 32 |
+| F4 | 91 |
+| **Total** | **1122** |
 
 The dataset was generated from:
 
@@ -691,46 +673,36 @@ spike_cc_0.2_1A
 UV_cc_1A_9V_12V
 ```
 
-Approximately three recordings were collected for each fault scenario.
+Three recordings were collected for each fault scenario (12 fault recordings in total).
 
 ---
 
 # 📈 Model Validation
 
-The Random Forest was evaluated using **5-fold group-aware cross-validation**.
-
-The results obtained on the current controlled laboratory dataset are:
+The deployed 12-feature Random Forest was evaluated using **5-fold StratifiedGroupKFold** cross-validation, grouped by recording file (45 groups). Results are out-of-fold predictions over all 1122 windows (`pdm_enhanced/models/saved_models/validation_report.txt`):
 
 | Metric | Result |
 |---|---:|
-| Accuracy | **96.78%** |
-| Balanced Accuracy | **92.16%** |
-| Macro F1 | **≈ 0.93** |
-| Weighted F1 | **≈ 0.97** |
+| Accuracy | **90.91%** |
+| Balanced Accuracy | **79.82%** |
+| Macro F1 | **0.770** |
+| Weighted F1 | **≈ 0.91** |
 
-Individual fold accuracies:
-
-```text
-Fold 1 : 99.48%
-Fold 2 : 96.37%
-Fold 3 : 96.35%
-Fold 4 : 97.93%
-Fold 5 : 93.75%
-```
+For reference, always predicting HEALTHY would score about 81% accuracy (910 of 1122 windows), so balanced accuracy and macro F1 are the more informative metrics.
 
 ### Class-wise Performance
 
 | Class | Precision | Recall | F1 |
 |---|---:|---:|---:|
-| HEALTHY | 0.98 | 0.99 | 0.98 |
-| F1 | 0.98 | 0.88 | 0.93 |
-| F2 | 0.92 | 0.95 | 0.94 |
-| F3 | 0.90 | 0.87 | 0.88 |
-| F4 | 0.93 | 0.92 | 0.92 |
+| HEALTHY | 0.96 | 0.94 | 0.95 |
+| F1 | 0.64 | 0.94 | 0.76 |
+| F2 | 0.61 | 0.52 | 0.56 |
+| F3 | 0.72 | 0.91 | 0.81 |
+| F4 | 0.89 | 0.68 | 0.77 |
 
-> **Important:** 96.78% is a group-aware cross-validation result on the current controlled laboratory dataset. It should not be interpreted as universal real-world motor-fault detection accuracy.
+> **Important:** 90.91% is a group-aware cross-validation result on the current controlled laboratory dataset. It should not be interpreted as universal real-world motor-fault detection accuracy.
 
-There are currently only 45 independent recordings, with approximately three independent recordings for each fault scenario. Additional experiments are required to establish broader generalization.
+There are currently only 45 independent recordings, with three independent recordings for each fault scenario. F2 is the weakest class (21 windows, 52% recall). Additional experiments are required to establish broader generalization.
 
 ---
 
@@ -738,24 +710,22 @@ There are currently only 45 independent recordings, with approximately three ind
 
 Feature-importance analysis identified several important features for classification.
 
-The highest-ranked features include:
+The highest-ranked features in the full 53-feature model (`pdm_enhanced/models/saved_models/feature_importance.csv`) are:
 
 ```text
-1.  az_mean
-2.  rpm_min
-3.  ay_std
+1.  rpm_min
+2.  az_mean
+3.  rpm_median
 4.  ay_rms
-5.  rpm_median
-6.  ax_crest
-7.  ax_rms
+5.  ay_std
+6.  ax_kurt
+7.  rpm_p2p
 8.  ay_p2p
-9.  ax_std
-10. rpm_max
+9.  rpm_cv_percent
+10. az_std
 ```
 
-RPM-derived features are particularly useful for distinguishing operating conditions involving changes in motor speed.
-
-For example, the undervoltage condition produces significant RPM variation compared with healthy operation.
+RPM-derived features rank highly. Because the F4 (undervoltage) recordings also run at lower speed, these features may partly capture the operating point of each recording rather than the fault itself. This is an open question for further experiments.
 
 ---
 
@@ -795,70 +765,29 @@ The raw sensor window does **not** need to be uploaded to the cloud for classifi
 
 Individual sensor windows can produce temporary prediction changes because of noise and transient operating conditions.
 
-The firmware therefore applies temporal prediction smoothing before presenting the final motor condition.
+The firmware therefore applies temporal prediction smoothing before presenting the final motor condition: the reported class is the majority vote over the last three inference windows (about 750 ms of history at 250 ms per window).
 
 This reduces unstable class transitions and produces a more useful real-time health indication.
 
 ---
 
-# 📶 Wi-Fi Communication
+# 📶 Serial Output (Current Stable Build)
 
-The ESP32-S3 operates as a Wi-Fi station and connects to the same local network as the monitoring laptop.
+The stable firmware does not connect to Wi-Fi. Telemetry is available on the USB serial port:
 
-After connecting, the firmware prints the ESP32 IP address to the serial monitor.
-
-Example:
-
-```text
-WiFi connected
-IP address: <ESP32-IP>
+```bash
+pio device monitor -d hardware/esp32-pdm/pdm_enhanced/embedded --baud 115200
 ```
 
-The dashboard can then be accessed from a browser using:
-
-```text
-http://<ESP32-IP>
-```
-
-For example:
-
-```text
-http://192.168.x.x
-```
-
-The exact address depends on the local network.
+Each inference window prints one JSON line (see the Serial Telemetry section under Features). The same stream can be captured to a file and analysed offline, or forwarded by a host script.
 
 ---
 
-# 🌐 JSON API
+# 🌐 Wi-Fi Dashboard (Deferred)
 
-The ESP32 provides a JSON API through:
+The earlier Wi-Fi build (`hardware/esp32-pdm/src/main.cpp`) connected to the local network, served a browser dashboard, and exposed `/api/data`. It is not part of the stable build because of observed latency. The planned integration will restore these features once the current feature-pipeline issues are resolved.
 
-```text
-/api/data
-```
-
-The API exposes the latest machine-learning prediction and telemetry.
-
-The information includes values such as:
-
-```text
-prediction
-health
-confidence
-rpm
-rpm slope
-current dI/dt
-temperature
-```
-
-This allows external applications to consume the Edge AI results without modifying the embedded inference system.
-
----
-
-# 📊 Real-Time Web Dashboard
-
-The current physical system includes an HTTP dashboard directly inside the ESP32 firmware.
+Planned design (not yet active):
 
 ```text
 Laptop Browser
@@ -868,21 +797,13 @@ Laptop Browser
    ESP32-S3
        │
        ▼
- /api/data
+ /api/data (JSON)
        │
        ▼
- Current AI Prediction
+ Live prediction + telemetry
 ```
 
-The browser periodically requests updated data from the ESP32.
-
-Current polling interval:
-
-```text
-500 ms
-```
-
-The dashboard provides real-time visualization of the motor's condition and telemetry.
+Planned fields for `/api/data` mirror the serial JSON, plus temperature.
 
 ---
 
@@ -897,6 +818,17 @@ GPIO 38
 ```
 
 This provides an immediate physical indication of the current system state without requiring a laptop.
+
+| LED | Meaning |
+|---|---|
+| 🟢 Green | HEALTHY |
+| 🟠 Amber | F1 – Repeat load step |
+| 🟡 Yellow | F2 – Step load increase |
+| 🟣 Purple | F3 – Current spike |
+| 🔴 Red | F4 – Undervoltage (also used for MPU6050 init failure) |
+| 🔵 Blue | Calibration, insufficient valid RPM, or unknown class |
+
+The LED shows the majority-vote class from the last three windows.
 
 ---
 
@@ -920,24 +852,29 @@ edge-ai-pdm/
 ├── hardware/
 │   └── esp32-pdm/
 │       │
-│       ├── dataset_v3/
-│       │   ├── build_dataset_v3.py
-│       │   ├── train_model_v3.py
-│       │   ├── event_label_manifest_v3.csv
-│       │   ├── master_features_relabelled_v3.csv
-│       │   └── ml_dataset_v3.csv
+│       ├── pdm_enhanced/              ← CURRENT STABLE BUILD
+│       │   ├── README.md
+│       │   ├── data/                  (ML dataset, manifest, feature list)
+│       │   ├── data_processing/       (feature extractor, dataset builder)
+│       │   ├── models/                (training, anomaly detector, health index)
+│       │   │   └── saved_models/      (RF + anomaly artifacts, validation report)
+│       │   ├── inference/             (offline predictor and CLI)
+│       │   ├── embedded/              (ESP32-S3 firmware, PlatformIO project)
+│       │   │   ├── include/pdm_model.h
+│       │   │   └── src/main.cpp
+│       │   └── tests/                 (unit, inference and parity tests)
 │       │
-│       ├── embedded_model_v2/
+│       ├── dataset_v3/                (previous dataset pipeline)
+│       ├── embedded_model_v2/         (previous embedded model)
 │       ├── include/
-│       │   └── pdm_model.h
+│       │   └── pdm_model.h            (previous model header)
 │       ├── lib/
-│       ├── log_file/
-│       ├── pdm_enhanced/
+│       ├── log_file/                  (raw recordings)
 │       ├── src/
-│       │   └── main.cpp
+│       │   └── main.cpp               (deferred Wi-Fi build)
 │       ├── test/
 │       ├── PDM_Project_Chat_Handoff.md
-│       └── platformio.ini
+│       └── platformio.ini             (builds the deferred Wi-Fi build)
 │
 ├── IMPLEMENTATION_LOGS.md
 ├── README.md
@@ -951,9 +888,24 @@ edge-ai-pdm/
 
 ---
 
-# 🧪 Dataset Version 3
+# 🧪 Current Pipeline: `pdm_enhanced`
 
-The `dataset_v3` directory contains the updated dataset-generation and model-training pipeline.
+The current pipeline lives in `hardware/esp32-pdm/pdm_enhanced/`. Its own README gives the full details. Run these commands from `hardware/esp32-pdm`:
+
+```bash
+PYTHONPATH=. python3 pdm_enhanced/data_processing/dataset_builder.py   # rebuild the dataset
+PYTHONPATH=. python3 pdm_enhanced/models/train_and_evaluate.py        # train and validate
+PYTHONPATH=. python3 pdm_enhanced/embedded/export_c_header.py         # export pdm_model.h
+PYTHONPATH=. python3 -m unittest discover -s pdm_enhanced/tests -t .  # run tests
+```
+
+Dependencies are pinned in the root `uv.lock`. Run with `uv run --frozen` from the repository root.
+
+---
+
+# 🧪 Dataset Version 3 (Previous Pipeline)
+
+The `dataset_v3` directory contains the earlier dataset-generation and model-training pipeline. It is kept for reference and is superseded by `pdm_enhanced`.
 
 The updated labeling strategy distinguishes:
 
@@ -995,7 +947,7 @@ The embedded-model development explored reducing the number of trees while retai
 
 # 🔨 ESP32-S3 Setup
 
-The physical deployment uses:
+The stable physical deployment uses:
 
 - ESP32-S3 DevKitC-1
 - Arduino framework
@@ -1003,38 +955,32 @@ The physical deployment uses:
 - Adafruit MPU6050 library
 - Adafruit NeoPixel library
 
-The PlatformIO configuration is located at:
+The PlatformIO configuration for the stable build is located at:
 
 ```text
-hardware/esp32-pdm/platformio.ini
+hardware/esp32-pdm/pdm_enhanced/embedded/platformio.ini
 ```
 
 ---
 
 # 🚀 Build and Upload the Firmware
 
-Navigate to the hardware project:
+From the repository root, build the stable firmware:
 
 ```bash
-cd hardware/esp32-pdm
-```
-
-Build the firmware:
-
-```bash
-pio run
+pio run -d hardware/esp32-pdm/pdm_enhanced/embedded
 ```
 
 Upload it to the ESP32-S3:
 
 ```bash
-pio run --target upload
+pio run -d hardware/esp32-pdm/pdm_enhanced/embedded -t upload
 ```
 
 Open the serial monitor:
 
 ```bash
-pio device monitor --baud 115200
+pio device monitor -d hardware/esp32-pdm/pdm_enhanced/embedded --baud 115200
 ```
 
 The serial monitor operates at:
@@ -1043,35 +989,27 @@ The serial monitor operates at:
 115200 baud
 ```
 
+> The root-level `hardware/esp32-pdm/platformio.ini` builds the earlier Wi-Fi firmware (`hardware/esp32-pdm/src/main.cpp`). It is not the stable build.
+
 ---
 
-# 📡 Running the Physical Dashboard
+# 📡 Running the Stable Firmware
 
 After flashing the firmware:
 
-1. Power the ESP32-S3.
-2. Ensure the Wi-Fi credentials configured in the firmware correspond to the local network.
-3. Open the serial monitor.
-4. Wait for the Wi-Fi connection.
-5. Note the IP address printed by the ESP32.
-6. Connect the laptop to the **same Wi-Fi network**.
-7. Open the ESP32 IP address in a browser.
-
-For example:
-
-```text
-http://192.168.x.x
-```
-
-The dashboard is served directly by the ESP32-S3.
+1. Power the ESP32-S3 and connect the sensors.
+2. Open the serial monitor.
+3. Wait for the zero-current calibration message and `Sampling started @ 200 Hz`.
+4. Observe one JSON telemetry line every 250 ms once the 1-second buffer is full.
+5. Watch the NeoPixel LED for the current class (see the LED status codes in the Pipeline section).
 
 ---
 
-# 🔐 Wi-Fi Security
+# 🔐 Wi-Fi Security (For the Deferred Wi-Fi Build)
 
 **Do not commit real Wi-Fi passwords to the public GitHub repository.**
 
-The Wi-Fi credentials in the firmware should be replaced with placeholders or moved to a local configuration mechanism that is excluded from Git.
+The earlier Wi-Fi firmware (`hardware/esp32-pdm/src/main.cpp`, lines 48–49) currently contains a hard-coded SSID and password. These should be replaced with placeholders or moved to a local configuration mechanism that is excluded from Git before the Wi-Fi build is re-integrated.
 
 If an actual Wi-Fi password has already been committed to a public repository, it should be changed.
 
@@ -1135,7 +1073,7 @@ The physical ESP32-S3 implementation is now the primary real-time Edge AI deploy
 - Evaluated accuracy, balanced accuracy, precision, recall, and F1.
 - Selected a compact model suitable for embedded inference.
 
-## Phase 5 — ESP32-S3 Deployment
+## Phase 5 — ESP32-S3 Deployment (`pdm_enhanced`, stable)
 
 - Integrated MPU6050.
 - Integrated ACS712.
@@ -1145,15 +1083,13 @@ The physical ESP32-S3 implementation is now the primary real-time Edge AI deploy
 - Implemented embedded feature extraction.
 - Integrated Random Forest inference.
 - Added prediction smoothing.
+- Added serial JSON telemetry and local NeoPixel status indication.
 
-## Phase 6 — Wireless Monitoring
+## Phase 6 — Wireless Monitoring (Deferred)
 
-- Added Wi-Fi connectivity.
-- Added HTTP server.
-- Added `/api/data` JSON endpoint.
-- Added browser dashboard.
-- Added real-time telemetry visualization.
-- Added local NeoPixel status indication.
+- Implemented Wi-Fi connectivity, an HTTP server, a `/api/data` JSON endpoint, and a browser dashboard in an earlier build (`src/main.cpp`).
+- Tested the build; dropped from the stable build due to latency issues.
+- Pending: resolve the feature-pipeline issues first, then re-integrate the dashboard.
 
 ---
 
@@ -1190,9 +1126,9 @@ Embedded Random Forest
   ↓
 Prediction
   ↓
-Wi-Fi
+Serial JSON telemetry
   ↓
-Browser Dashboard
+(planned) Wi-Fi Browser Dashboard
 ```
 
 The key difference is that the current system performs **machine-learning inference directly on the ESP32-S3** rather than depending on a laptop or cloud server.
@@ -1219,16 +1155,16 @@ The key difference is that the current system performs **machine-learning infere
 | ML Algorithm | Random Forest |
 | Embedded Trees | 35 |
 | Embedded Features | 12 |
-| ML Dataset Features | 40 |
+| ML Candidate Features | 53 |
 | Classes | 5 |
 | Recording Groups | 45 |
-| ML Windows | 963 |
-| CV Accuracy | 96.78% |
-| Balanced Accuracy | 92.16% |
-| Macro F1 | ≈ 0.93 |
-| Communication | Wi-Fi |
-| Dashboard | ESP32-hosted Web Dashboard |
-| API | `/api/data` |
+| ML Windows | 1122 |
+| CV Accuracy | 90.91% |
+| Balanced Accuracy | 79.82% |
+| Macro F1 | 0.770 |
+| Communication | USB serial, 115200 baud (Wi-Fi deferred) |
+| Dashboard | Deferred (Wi-Fi build, see above) |
+| API | Serial JSON (`/api/data` deferred) |
 
 ---
 
@@ -1245,7 +1181,22 @@ Important limitations include:
 - Mechanical fault experiments were not sufficiently reproducible and therefore the current dataset emphasizes controlled electrical/operational abnormalities.
 - The current fault classes represent experimental operating scenarios rather than a complete taxonomy of real motor failures.
 - Additional motors, operating conditions, loads, and fault severities are required to establish generalization.
-- The reported 96.78% accuracy should not be interpreted as universal real-world performance.
+- The reported 90.91% accuracy should not be interpreted as universal real-world performance.
+- Fault windows overlap by 75% (0.25 s hop), so windows are not statistically independent. Effective sample sizes are smaller than the window counts suggest.
+- F2 has only 21 windows from three recordings, so its metrics have high variance.
+
+### Known Issues in the Stable Firmware
+
+These are identified but not yet resolved. They are the first items to address before the Wi-Fi dashboard is re-integrated.
+
+- **`order_2x_energy` is zero above ~3000 RPM.** At 200 Hz sampling, the 2× shaft frequency exceeds the 100 Hz Nyquist limit at about 3000 RPM. Both the Python pipeline and the firmware return 0 in this range. About 18% of training windows (all HEALTHY or F4 at high speed) have this value, so the feature acts partly as a speed-regime flag.
+- **Training/serving skew in `order_2x_energy`.** The Python pipeline sums FFT energy over a ±2.5 Hz band at the mean RPM. The firmware uses a single-bin DFT at the median RPM. The model was trained on the Python definition.
+- **RPM cleaning is not fully ported.** The Python pipeline applies a median filter and a 1000 RPM jump limit. The firmware applies only the range check. `rpm_min` is the highest-ranked feature, so glitches matter.
+- **Anomaly gate not on-device.** The Isolation Forest out-of-distribution gate and the associated health-index cap run only in Python. The on-device health index is 100 × P(HEALTHY).
+- **Parity test covers the trees only.** `test_embedded_parity.py` checks tree traversal, not feature extraction. Feature-level parity between Python and firmware has not been verified.
+- **Speed confound.** RPM features dominate importance, and F4 runs at a lower speed. The model may partly learn the operating point rather than the fault.
+- **Sampling timing not measured on hardware.** Feature constants assume an exact 200 Hz sample rate. Inline inference may cause timing jitter.
+- **Library version mismatch.** The saved models were created with scikit-learn 1.9.0, but `uv.lock` pins 1.8.0. Loading the models produces version warnings. Re-export after pinning.
 
 ---
 
@@ -1253,13 +1204,14 @@ Important limitations include:
 
 Future development can include:
 
+- Resolving the Known Issues listed above (feature parity, `order_2x_energy`, RPM cleaning, on-device anomaly gate).
+- Re-integrating the Wi-Fi dashboard and `/api/data` endpoint after latency is resolved.
 - Increasing the number of independent motor recordings.
 - Testing multiple motors.
 - Collecting additional fault severities.
 - Adding reproducible mechanical fault conditions.
 - Testing additional motor speeds and loads.
 - Comparing different ML algorithms.
-- Reducing the number of input features.
 - Optimizing RAM and flash usage.
 - Measuring exact ESP32 inference latency.
 - Measuring energy consumption.
@@ -1277,6 +1229,7 @@ Future development can include:
 Additional project documentation is available in:
 
 ```text
+hardware/esp32-pdm/pdm_enhanced/README.md   (current pipeline and firmware)
 IMPLEMENTATION_LOGS.md
 VIVA_PREP.md
 PDM_Project_Chat_Handoff.md
